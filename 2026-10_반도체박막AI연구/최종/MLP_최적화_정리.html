@@ -1,0 +1,399 @@
+<title>MLP 최적화 기록</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 한 열짜리 실험 노트. 위에서 아래로 단계가 이어지고, 표·차트만 넓게 쓴다. */
+:root {
+  --bg: #f6f7f6;
+  --surface: #fcfcfb;
+  --ink: #111312;
+  --ink-2: #4c524f;
+  --muted: #858b88;
+  --line: #dfe2e0;
+  --axis: #c3c6c3;
+  --accent: #1d5fa8;
+  --accent-soft: #e4edf8;
+  --s512: #2a78d6;
+  --s160: #eb6834;
+  --warn-bg: #fff4dd;
+  --warn-ink: #6b4a00;
+  --font-body: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111312; --surface: #1a1c1b; --ink: #eef0ee; --ink-2: #c0c5c2; --muted: #8b918e;
+    --line: #2c302e; --axis: #3b403d; --accent: #7fb0ea; --accent-soft: #1d2a3a;
+    --s512: #3987e5; --s160: #d95926; --warn-bg: #33290f; --warn-ink: #f2d38a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111312; --surface: #1a1c1b; --ink: #eef0ee; --ink-2: #c0c5c2; --muted: #8b918e;
+  --line: #2c302e; --axis: #3b403d; --accent: #7fb0ea; --accent-soft: #1d2a3a;
+  --s512: #3987e5; --s160: #d95926; --warn-bg: #33290f; --warn-ink: #f2d38a;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.7; }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.3; margin: 0; }
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.4rem; font-weight: 700; }
+h3 { font-size: 1.1rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+section { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+.lead { color: var(--ink-2); font-size: 1.05rem; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 0.88rem; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+/* 요약 수치 */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.tile .k { font-size: 0.82rem; color: var(--ink-2); }
+.tile .v { font-family: var(--font-mono); font-size: 1.55rem; font-weight: 500; }
+.tile .s { font-size: 0.8rem; color: var(--muted); }
+@media (max-width: 700px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 단계 */
+.steps { display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--line); margin-left: 14px; }
+.step { position: relative; padding: 0 0 36px 30px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.step:last-child { padding-bottom: 0; }
+.step .dot { position: absolute; left: -15px; top: 0; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent); color: var(--accent);
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500; display: grid; place-items: center; }
+.step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.result { font-family: var(--font-mono); font-size: 0.95rem; color: var(--accent); font-weight: 500; }
+.kv { display: grid; grid-template-columns: 5.5em 1fr; gap: 6px 14px; margin: 0; }
+.kv dt { color: var(--muted); font-size: 0.88rem; padding-top: 2px; }
+.kv dd { margin: 0; min-width: 0; }
+.analogy { background: var(--accent-soft); border-radius: 6px; padding: 12px 16px; font-size: 0.95rem; }
+.caution { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 12px 16px; font-size: 0.95rem; }
+
+/* 표 */
+.table-box { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--ink-2); font-size: 0.84rem; }
+th:first-child, td:first-child { text-align: left; }
+td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+td:first-child { font-family: var(--font-body); }
+tr:last-child td { border-bottom: 0; }
+.hl td { background: var(--accent-soft); }
+
+/* 차트 */
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 16px 10px; position: relative; min-width: 0; }
+.chart h3 { font-size: 0.98rem; }
+.chart .sub { font-size: 0.82rem; color: var(--muted); }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.charts-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .charts-2 { grid-template-columns: 1fr; } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.85rem; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.tick { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.lbl { font-size: 12.5px; fill: var(--ink-2); font-family: var(--font-body); }
+.val { font-family: var(--font-mono); font-size: 12px; fill: var(--ink); }
+.hit { fill: transparent; cursor: default; }
+#tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 0.8rem; line-height: 1.4;
+  padding: 6px 9px; border-radius: 5px; white-space: nowrap; z-index: 5; }
+
+/* 용어 */
+.glossary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; margin: 0; }
+.glossary div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.glossary dt { font-weight: 600; }
+.glossary dd { margin: 0; color: var(--ink-2); font-size: 0.93rem; }
+@media (max-width: 640px) { .glossary { grid-template-columns: 1fr; } }
+
+ul.plain { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">CUAI 반도체 박막 · MLP 담당</div>
+  <h1>MLP 최적화 기록</h1>
+  <p class="lead">반사율 스펙트럼 226개 값으로 4개 박막층의 두께를 예측하는 MLP를, 무엇을 왜 바꿔서 얼마나 좋아졌는지 순서대로 정리했습니다. 팀 회의(2026-11-10) 비교용 자료입니다.</p>
+  <div class="meta">
+    <span>작성 박영우</span>
+    <span>모든 수치: 검증 분할 81,000개 기준</span>
+    <span>최종평가 분할은 아직 사용하지 않음</span>
+  </div>
+</header>
+
+<section aria-labelledby="sum">
+  <h2 id="sum">한눈에 보기</h2>
+  <div class="tiles">
+    <div class="tile"><span class="k">검증 MAE</span><span class="v">2.75</span><span class="s">처음 17.91 → 85% 감소</span></div>
+    <div class="tile"><span class="k">MAPE</span><span class="v">4.79%</span><span class="s">기준 모델 14.75%</span></div>
+    <div class="tile"><span class="k">seed 간 편차</span><span class="v">±0.04</span><span class="s">기준 모델 ±0.91</span></div>
+    <div class="tile"><span class="k">흔들림 D (가장 강한 잡음)</span><span class="v">2.61</span><span class="s">기준 모델 5.39</span></div>
+  </div>
+
+  <div class="chart" id="c-steps">
+    <h3>단계별 검증 MAE</h3>
+    <div class="sub">낮을수록 정확합니다. 입력을 보지 않고 중간값만 찍으면 75.31입니다.</div>
+    <svg id="svg-steps" viewBox="0 0 800 210" role="img" aria-label="단계별 검증 MAE: 기본 학습 17.91, 정답 표준화 10.79, 300 epoch와 학습률 스케줄러 8.87, 뉴런 512 2.75"></svg>
+  </div>
+</section>
+
+<section aria-labelledby="fixed">
+  <h2 id="fixed">바꾸지 않은 것</h2>
+  <p>공정하게 비교하려고 아래 조건은 모든 단계에서 똑같이 두었습니다. 한 번에 하나씩만 바꿔야 무엇이 효과를 냈는지 알 수 있습니다.</p>
+  <div class="table-box">
+    <table>
+      <tbody>
+        <tr><td>데이터 분할</td><td style="font-family:var(--font-body)">전체 810,000개를 seed 2026으로 섞어 학습 648,000 / 검증 81,000 / 최종평가 81,000</td></tr>
+        <tr><td>입력 처리</td><td style="font-family:var(--font-body)">226개 채널마다 학습 분할의 평균·표준편차로 표준화</td></tr>
+        <tr><td>모델 모양</td><td style="font-family:var(--font-body)">은닉층 3개, ReLU, 출력 4개 (층별 두께)</td></tr>
+        <tr><td>학습 방법</td><td style="font-family:var(--font-body)">손실 MAE(L1), Adam, 시작 학습률 0.001, 미니배치 1,024개</td></tr>
+        <tr><td>반복 확인</td><td style="font-family:var(--font-body)">학습 seed 0·1·2로 세 번씩 학습해 평균 ± 표준편차 보고</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="steps">
+  <h2 id="steps">최적화 단계</h2>
+  <p>단계마다 <strong>무엇이 문제였는지(증상)</strong>를 먼저 확인하고, 그 원인에 맞는 것 하나만 바꿨습니다.</p>
+
+  <div class="steps">
+
+    <div class="step">
+      <span class="dot">0</span>
+      <div class="step-head"><h3>공통 데이터 분할 만들기</h3></div>
+      <dl class="kv">
+        <dt>증상</dt><dd>기존 분할 코드(<code>02_데이터분할.py</code>)는 81만 개를 덩어리로 나눈 뒤, 덩어리마다 같은 위치만 뽑았습니다. 그 결과 4층 두께값별 표본 수가 2,419~2,943개로 고르지 않았습니다.</dd>
+        <dt>바꾼 것</dt><dd>전체를 한 번에 고르게 섞어 세 묶음으로 나눴습니다(<code>04_공통분할_만들기.py</code>). 팀원도 같은 행으로 비교할 수 있게 <code>공통분할/</code> 폴더에 파일과 사용법을 두었습니다.</dd>
+      </dl>
+    </div>
+
+    <div class="step">
+      <span class="dot">1</span>
+      <div class="step-head"><h3>기본 학습</h3><span class="result">검증 MAE 17.91</span></div>
+      <dl class="kv">
+        <dt>설정</dt><dd>뉴런 160개 × 3층, 100 epoch, 정답 두께는 원래 숫자(10~300) 그대로</dd>
+        <dt>결과</dt><dd>중간값만 찍을 때(75.31)보다 훨씬 좋아져, 모델이 반사율에서 무언가를 배운다는 것은 확인했습니다. seed 0 하나만 학습했습니다.</dd>
+        <dt>증상</dt><dd>배우는 속도가 느렸습니다. 30 epoch에 23.60이었고, 100 epoch 마지막까지 계속 좋아지는 중이었습니다.</dd>
+      </dl>
+    </div>
+
+    <div class="step">
+      <span class="dot">2</span>
+      <div class="step-head"><h3>정답 표준화</h3><span class="result">17.91 → 10.79 ± 0.49</span></div>
+      <dl class="kv">
+        <dt>바꾼 것</dt><dd>모델이 맞힐 정답을 <code>(두께 − 155.0) ÷ 86.5</code>로 바꿨습니다. 10~300이던 두께가 약 −1.7~+1.7이 됩니다. 예측은 거꾸로 계산해 원래 두께로 되돌린 뒤 평가합니다.</dd>
+        <dt>결과</dt><dd>같은 100 epoch에서 seed 0·1·2가 11.36 / 10.51 / 10.50. 30 epoch 시점도 23.60 → 14.71로 빨라졌습니다.</dd>
+      </dl>
+      <div class="analogy">모델은 처음에 0 근처 숫자만 내놓고, 한 번에 아주 작은 보폭으로만 움직입니다. 정답이 250이면 거기까지 걸어가는 데 학습 시간을 다 쓰지만, 1.1이면 금방 도착해 남은 시간에 세밀한 차이를 배웁니다.</div>
+    </div>
+
+    <div class="step">
+      <span class="dot">3</span>
+      <div class="step-head"><h3>더 오래 학습 + 학습률 스케줄러</h3><span class="result">10.79 → 8.87 ± 0.91</span></div>
+      <dl class="kv">
+        <dt>증상</dt><dd>100 epoch에서도 검증 MAE가 계속 내려가는 중이었습니다. 덜 배우고 멈춘 상태였습니다.</dd>
+        <dt>바꾼 것</dt><dd>최대 300 epoch, 20 epoch 동안 나아지지 않으면 조기 종료. 검증 MAE가 5 epoch 동안 정체되면 학습률을 절반으로 줄였습니다.</dd>
+        <dt>결과</dt><dd>seed 0·1·2가 9.90(215 epoch) / 8.54(258) / 8.17(294). 학습률이 1e-7 수준까지 줄어 끝까지 수렴했습니다. 이 모델을 <strong>기준 모델</strong>로 정했습니다.</dd>
+        <dt>남은 문제</dt><dd>학습 MAE(8.99)와 검증 MAE(9.90)가 거의 같았습니다. 연습문제조차 잘 못 푸는 상태, 즉 모델 용량이 부족하다는 신호입니다. seed마다 결과 차이도 컸습니다.</dd>
+      </dl>
+      <div class="analogy">학습률은 보폭입니다. 처음엔 크게 움직여 빨리 다가가고, 더 나아지지 않으면 보폭을 줄여 정답 근처를 세밀하게 찾습니다.</div>
+    </div>
+
+    <div class="step">
+      <span class="dot">4</span>
+      <div class="step-head"><h3>뉴런 수 늘리기 (160 → 512)</h3><span class="result">8.87 → 2.75 ± 0.04</span></div>
+      <dl class="kv">
+        <dt>바꾼 것</dt><dd>은닉층 한 층의 뉴런을 160개에서 512개로 늘렸습니다. 모델이 조정하는 숫자(가중치)가 <span class="num">88,484</span>개에서 <span class="num">643,588</span>개로 약 7배가 됩니다. 나머지 설정은 3단계와 같습니다.</dd>
+        <dt>결과</dt><dd>seed 0·1·2가 2.71(214 epoch) / 2.80(212) / 2.74(208). 정확도가 3배 좋아졌고, seed 간 차이가 0.91에서 0.04로 줄어 학습할 때마다 거의 같은 결과가 나옵니다.</dd>
+        <dt>대가</dt><dd>epoch당 시간이 약 6~12초에서 약 40초로 늘었습니다(세 개 동시 실행 기준). 한 번 학습에 약 2시간 반이 걸렸습니다.</dd>
+      </dl>
+      <div class="analogy">뉴런 하나는 반사율에서 특징 하나를 알아보는 작은 탐지기입니다. 탐지기가 많을수록 "2층이 120인지 130인지" 같은 미세한 차이까지 구분할 수 있습니다.</div>
+      <div class="caution">학습 MAE(1.56)와 검증 MAE(2.71)의 차이가 1.1 정도로 벌어지기 시작했습니다. 아직 검증 MAE가 좋아지고 있어 문제는 아니지만, 이보다 더 키우면 연습문제만 외우는 과적합이 생길 수 있습니다.</div>
+    </div>
+
+  </div>
+</section>
+
+<section aria-labelledby="noise">
+  <h2 id="noise">잡음 안정성은 어떻게 바뀌었나</h2>
+  <p>우리 연구의 핵심 질문입니다. 반사율에 정규분포 잡음 <code>σ × z</code>를 더해 넣고, 세기마다 10번 반복한 평균을 냈습니다. 세 모델에 똑같은 잡음을 줬습니다.</p>
+
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--s160)"></i>기준 모델 (뉴런 160)</span>
+    <span><i style="background:var(--s512)"></i>뉴런 512</span>
+  </div>
+  <div class="charts-2">
+    <div class="chart">
+      <h3>잡음 세기별 MAE</h3>
+      <div class="sub">정답과 얼마나 틀렸나</div>
+      <svg id="svg-mae" viewBox="0 0 400 230" role="img" aria-label="잡음 세기별 MAE 비교. 표에 같은 값이 있습니다."></svg>
+    </div>
+    <div class="chart">
+      <h3>잡음 세기별 흔들림 D</h3>
+      <div class="sub">잡음 전후로 예측이 얼마나 바뀌었나</div>
+      <svg id="svg-d" viewBox="0 0 400 230" role="img" aria-label="잡음 세기별 예측 변화량 D 비교. 표에 같은 값이 있습니다."></svg>
+    </div>
+  </div>
+
+  <div class="table-box">
+    <table>
+      <thead>
+        <tr><th>조건 (σ)</th><th>MAE 160</th><th>MAE 512</th><th>ΔMAE 160</th><th>ΔMAE 512</th><th>MAPE 160</th><th>MAPE 512</th><th>D 160</th><th>D 512</th><th>P95 160</th><th>P95 512</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>S0 (0)</td><td>8.87</td><td>2.75</td><td>0</td><td>0</td><td>14.75%</td><td>4.79%</td><td>0</td><td>0</td><td>26.18</td><td>7.50</td></tr>
+        <tr><td>S1 (0.0025)</td><td>8.89</td><td>2.77</td><td>0.02</td><td>0.02</td><td>14.79%</td><td>4.82%</td><td>0.69</td><td>0.31</td><td>26.26</td><td>7.57</td></tr>
+        <tr><td>S2 (0.005)</td><td>8.97</td><td>2.81</td><td>0.10</td><td>0.06</td><td>14.92%</td><td>4.91%</td><td>1.37</td><td>0.62</td><td>26.54</td><td>7.75</td></tr>
+        <tr><td>S3 (0.01)</td><td>9.26</td><td>3.01</td><td>0.39</td><td>0.26</td><td>15.46%</td><td>5.28%</td><td>2.71</td><td>1.24</td><td>27.64</td><td>8.45</td></tr>
+        <tr class="hl"><td>S4 (0.02)</td><td>10.37</td><td>3.78</td><td>1.50</td><td>1.03</td><td>17.49%</td><td>6.79%</td><td>5.39</td><td>2.61</td><td>31.94</td><td>11.40</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>알게 된 것</h3>
+  <ul class="plain">
+    <li><strong>모델을 키우자 정확도와 안정성이 함께 좋아졌습니다.</strong> 가장 강한 잡음(S4)에서 흔들림 D가 5.39에서 2.61로 절반이 됐습니다. S4에서의 MAE 3.78도 기준 모델의 잡음 없는 MAE 8.87보다 낮습니다.</li>
+    <li><strong>비율로 보면 반대입니다.</strong> 잡음 없을 때보다 MAE가 늘어난 비율이 S4에서 17%(1.50 ÷ 8.87)에서 37%(1.03 ÷ 2.75)로 커졌습니다. 기본 오차가 작아져서 같은 잡음이 상대적으로 더 크게 보입니다.</li>
+    <li><strong>2층이 가장 잡음에 약하고, 그다음이 3층입니다.</strong> 두 모델 모두 같습니다. S4 흔들림 D(1·2·3·4층 순)는 160 모델 4.33 / 7.77 / 5.89 / 3.58, 512 모델 2.02 / 3.55 / 2.78 / 2.08입니다. 160 모델에서는 1층이 4층보다 약했지만, 512 모델에서는 둘이 거의 같아졌습니다.</li>
+    <li><strong>얇은 막(10~100)이 가장 어렵습니다.</strong> 512 모델에서도 얇은 구간 MAPE가 9.3~14.3%로, 두꺼운 구간(0.7~1.3%)보다 훨씬 큽니다. 두께가 작아 같은 오차도 %로는 크게 나오는 이유도 있습니다.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="trouble">
+  <h2 id="trouble">진행 중 생긴 문제</h2>
+  <ul class="plain">
+    <li>512 뉴런 학습 세 개가 15:09에 동시에 중간 종료됐습니다(원인 미확인). 그때까지의 모델은 <code>_h512_중단본</code> 이름으로 보존했습니다.</li>
+    <li>재발에 대비해 학습 코드에 <strong>이어하기</strong> 기능을 넣었습니다. 매 epoch 상태를 저장해 두고, 같은 명령을 다시 실행하면 멈춘 epoch부터 계속합니다. 그 뒤 세 seed를 처음부터 다시 학습했습니다.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="decide">
+  <h2 id="decide">회의에서 정할 것</h2>
+  <ul class="plain">
+    <li><strong>기준 모델을 512 뉴런으로 바꿀지.</strong> 발표 자료의 구조는 226-160×3-4입니다. 바꾸지 않더라도 "모델 크기와 잡음 안정성" 비교 결과로 쓸 수 있습니다.</li>
+    <li><strong>안정성을 절대값으로 볼지, 비율로 볼지.</strong> 절대값(ΔMAE, D)이면 512가 더 안정적이고, 비율이면 160이 더 안정적입니다.</li>
+    <li><strong>팀원 모델과 비교할 지표 확정.</strong> 확정되면 최종평가 분할로 한 번만 정식 결과를 냅니다.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="terms">
+  <h2 id="terms">용어</h2>
+  <dl class="glossary">
+    <div><dt>MAE</dt><dd>예측 두께와 정답의 차이를 평균낸 값. 단위는 두께 그대로이고, 낮을수록 좋습니다.</dd></div>
+    <div><dt>MAPE</dt><dd>틀린 정도를 정답 대비 %로 나타낸 값. 얇은 막일수록 크게 나옵니다.</dd></div>
+    <div><dt>ΔMAE</dt><dd>잡음을 넣었을 때 MAE가 늘어난 양 (잡음 MAE − 잡음 없는 MAE).</dd></div>
+    <div><dt>흔들림 D</dt><dd>잡음 전후로 예측이 바뀐 양의 평균. 정답과 상관없이 일관성만 봅니다.</dd></div>
+    <div><dt>P95</dt><dd>표본별 오차를 줄 세웠을 때 상위 5% 경계. 크게 틀리는 경우를 봅니다.</dd></div>
+    <div><dt>epoch</dt><dd>학습 데이터 648,000개를 한 바퀴 모두 보는 것.</dd></div>
+    <div><dt>seed</dt><dd>처음 가중치와 섞는 순서를 정하는 난수. 운이 아니라 실력인지 보려고 0·1·2 세 번 학습합니다.</dd></div>
+    <div><dt>학습률</dt><dd>가중치를 한 번 고칠 때의 보폭.</dd></div>
+  </dl>
+</section>
+
+<footer>
+  코드: <code>작업파일/04_공통분할_만들기.py</code>, <code>05_모델학습.py</code>, <code>06_잡음평가.py</code> · 결과: <code>작업파일/결과/</code> · 자세한 기록: <code>README.md</code>
+</footer>
+
+</div>
+<div id="tip" hidden></div>
+
+<script>
+(function () {
+  var NS = "http://www.w3.org/2000/svg";
+  var tip = document.getElementById("tip");
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function text(parent, x, y, s, cls, anchor) {
+    var t = el("text", { x: x, y: y, "class": cls, "text-anchor": anchor || "start" }, parent);
+    t.textContent = s; return t;
+  }
+  function bindTip(node, msg) {
+    function show(ev) {
+      var box = node.closest(".chart").getBoundingClientRect();
+      tip.textContent = msg; tip.hidden = false;
+      var host = node.closest(".chart");
+      if (tip.parentNode !== host) host.appendChild(tip);
+      var x = ev.clientX - box.left + 12, y = ev.clientY - box.top - 34;
+      x = Math.min(x, box.width - tip.offsetWidth - 6);
+      tip.style.left = x + "px"; tip.style.top = Math.max(4, y) + "px";
+    }
+    node.addEventListener("mousemove", show);
+    node.addEventListener("mouseenter", show);
+    node.addEventListener("mouseleave", function () { tip.hidden = true; });
+  }
+
+  // 1) 단계별 검증 MAE (가로 막대)
+  var steps = [
+    { n: "① 기본 학습", d: "100 epoch, seed 0", v: 17.91 },
+    { n: "② 정답 표준화", d: "100 epoch, seed 3개 평균", v: 10.79 },
+    { n: "③ 300 epoch + 스케줄러", d: "기준 모델, seed 3개 평균", v: 8.87 },
+    { n: "④ 뉴런 512", d: "seed 3개 평균", v: 2.75 }
+  ];
+  var s = document.getElementById("svg-steps");
+  var L = 210, R = 740, top = 14, rowH = 44, max = 20;
+  var x = function (v) { return L + (v / max) * (R - L); };
+  [0, 5, 10, 15, 20].forEach(function (t) {
+    el("line", { x1: x(t), x2: x(t), y1: top - 4, y2: top + rowH * steps.length - 8, stroke: "var(--line)", "stroke-width": 1 }, s);
+    text(s, x(t), top + rowH * steps.length + 8, t, "tick", "middle");
+  });
+  steps.forEach(function (d, i) {
+    var y = top + i * rowH;
+    text(s, 0, y + 15, d.n, "lbl");
+    var isLast = i === steps.length - 1;
+    var w = x(d.v) - L, h = 22, r = 4;
+    var path = "M" + L + "," + y + " h" + (w - r) + " a" + r + "," + r + " 0 0 1 " + r + "," + r +
+      " v" + (h - 2 * r) + " a" + r + "," + r + " 0 0 1 -" + r + "," + r + " h-" + (w - r) + " Z";
+    el("path", { d: path, fill: isLast ? "var(--s512)" : "var(--axis)" }, s);
+    text(s, x(d.v) + 8, y + 15, d.v.toFixed(2), "val");
+    var hit = el("rect", { x: 0, y: y - 8, width: 800, height: rowH - 4, "class": "hit" }, s);
+    bindTip(hit, d.n + " · " + d.d + " · 검증 MAE " + d.v.toFixed(2));
+  });
+  el("line", { x1: L, x2: L, y1: top - 6, y2: top + rowH * steps.length - 8, stroke: "var(--axis)", "stroke-width": 1 }, s);
+
+  // 2) 잡음 세기별 선 차트
+  var conds = ["S0", "S1", "S2", "S3", "S4"];
+  var sig = ["0", ".0025", ".005", ".01", ".02"];
+  function lineChart(id, d160, d512, ymax, step, name) {
+    var svg = document.getElementById(id);
+    var L = 34, R = 300, T = 12, B = 190;
+    var X = function (i) { return L + i * (R - L) / 4; };
+    var Y = function (v) { return B - (v / ymax) * (B - T); };
+    for (var t = 0; t <= ymax; t += step) {
+      el("line", { x1: L, x2: R, y1: Y(t), y2: Y(t), stroke: t === 0 ? "var(--axis)" : "var(--line)", "stroke-width": 1 }, svg);
+      text(svg, L - 8, Y(t) + 4, t, "tick", "end");
+    }
+    conds.forEach(function (c, i) {
+      text(svg, X(i), B + 18, c, "tick", "middle");
+      text(svg, X(i), B + 32, "σ " + sig[i], "tick", "middle");
+    });
+    [[d160, "var(--s160)", "160"], [d512, "var(--s512)", "512"]].forEach(function (sr) {
+      var pts = sr[0].map(function (v, i) { return X(i) + "," + Y(v); }).join(" ");
+      el("polyline", { points: pts, fill: "none", stroke: sr[1], "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+      sr[0].forEach(function (v, i) {
+        el("circle", { cx: X(i), cy: Y(v), r: 4, fill: sr[1], stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      });
+      var last = sr[0][4];
+      text(svg, R + 10, Y(last) + 4, sr[2] + " · " + last.toFixed(2), "val");
+    });
+    conds.forEach(function (c, i) {
+      var hit = el("rect", { x: X(i) - 30, y: T - 6, width: 60, height: B - T + 12, "class": "hit" }, svg);
+      bindTip(hit, c + " (σ " + sig[i] + ") · " + name + "  160: " + d160[i].toFixed(2) + "  /  512: " + d512[i].toFixed(2));
+    });
+  }
+  lineChart("svg-mae", [8.87, 8.89, 8.97, 9.26, 10.37], [2.75, 2.77, 2.81, 3.01, 3.78], 12, 3, "MAE");
+  lineChart("svg-d", [0, 0.69, 1.37, 2.71, 5.39], [0, 0.31, 0.62, 1.24, 2.61], 6, 2, "D");
+})();
+</script>

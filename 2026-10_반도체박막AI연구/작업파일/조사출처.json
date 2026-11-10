@@ -1,0 +1,102 @@
+{
+  "checked": "2026-10-24",
+  "raw_csv_acquired": false,
+  "sources": [
+    {
+      "id": "D1",
+      "title": "공식 데이터",
+      "url": "https://dacon.io/competitions/official/235554/data",
+      "verified": "4개 두께 타깃; 226 반사율 입력; 실제 파장 비공개; 파일 용량"
+    },
+    {
+      "id": "D2",
+      "title": "공식 규칙",
+      "url": "https://dacon.io/competitions/official/235554/overview/rules",
+      "verified": "MAE; public/private 각각 test 50%; 외부데이터 금지"
+    },
+    {
+      "id": "D3",
+      "title": "공식 베이스라인",
+      "url": "https://dacon.io/competitions/official/235554/codeshare/461",
+      "verified": "브라우저 iframe 코드 확인; 226-160-160-160-4; Adam; MAE; epochs=20; batch_size=10000; validation_split=.05; test id 제외"
+    },
+    {
+      "id": "D4",
+      "title": "1위 공개 코드",
+      "url": "https://dacon.io/competitions/official/235554/codeshare/651",
+      "verified": "브라우저 iframe 코드 확인; skip MLP; 최종 12개 모델; V100; train shuffle 후 validation 10000; 100 epochs; batch 2048; lr .001; L1"
+    },
+    {
+      "id": "D5",
+      "title": "2위 공개 해법",
+      "url": "https://dacon.io/competitions/official/235554/codeshare/634",
+      "verified": "NN ensemble; 저자 댓글에 depth/lr/noise 및 입력 평균화"
+    },
+    {
+      "id": "D6",
+      "title": "3위 공개 해법",
+      "url": "https://dacon.io/competitions/official/235554/codeshare/635",
+      "verified": "NN-SWA-KFold 게시물 및 저자 설명"
+    },
+    {
+      "id": "D7",
+      "title": "공개 EDA",
+      "url": "https://dacon.io/competitions/official/235554/codeshare/1229",
+      "verified": "브라우저 iframe 결과표: train 810000x230; test 10000x227; 각 타깃 10~300 step10 각 27000회; 평균155; 표준편차86.554468; 0열 최소 -.014902; 결측 0. 원본 직접 재현 전"
+    },
+    {
+      "id": "D8",
+      "title": "PCA 시간 절감",
+      "url": "https://dacon.io/competitions/official/235554/codeshare/1384",
+      "verified": "동일 데이터 PCA 실험 선례 존재; 정량 결과는 아직 추출 안함"
+    },
+    {
+      "id": "D9",
+      "title": "최종 리더보드",
+      "url": "https://dacon.io/competitions/official/235554/leaderboard",
+      "verified": "Context_KKP .32084; Overfit .33683; 제로콜라맛있다 .34102"
+    },
+    {
+      "id": "D10",
+      "title": "당시 EDA 토론",
+      "url": "https://dacon.io/competitions/official/235554/talkboard/400061",
+      "verified": "30^4 두께 조합이라는 참가자 보고. 회귀 부적합 등 게시자 해석은 채택 안함"
+    },
+    {
+      "id": "P1",
+      "title": "Thin-film neural networks for optical inverse problem",
+      "url": "https://doi.org/10.37188/lam.2021.027",
+      "verified": "광학 박막 역문제 1차 연구; 대회 데이터와 별개"
+    },
+    {
+      "id": "P2",
+      "title": "Investigation of inverse design of multilayer thin-films with conditional invertible Neural Networks",
+      "url": "https://arxiv.org/abs/2210.04629",
+      "verified": "저자 및 초록 확인; 확률적 다중 후보와 local refinement; 대회 직접 실험 아님"
+    },
+    {
+      "id": "P3",
+      "title": "Simple and Scalable Predictive Uncertainty Estimation using Deep Ensembles",
+      "url": "https://arxiv.org/abs/1612.01474",
+      "verified": "저자·초록 확인; 회귀 불확실성 방법 참고"
+    },
+    {
+      "id": "P4",
+      "title": "A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification",
+      "url": "https://arxiv.org/abs/2107.07511",
+      "verified": "저자·초록 확인; 보장 적용에는 exchangeability 등 조건 필요; 4개 타깃 동시 보장 별도"
+    },
+    {
+      "id": "P5",
+      "title": "Fast Fitting of Reflectivity Data of Growing Thin Films Using Neural Networks",
+      "url": "https://arxiv.org/abs/1910.02898",
+      "verified": "XRR 데이터 논문; 광학 반사율과 관측방식 구별"
+    },
+    {
+      "id": "T1",
+      "title": "tmm",
+      "url": "https://github.com/sbyrnes321/tmm",
+      "verified": "박막 transfer matrix 공식 저자 저장소; 대회 실제 파장·n,k·입사조건 미공개로 직접 재현 미확정"
+    }
+  ]
+}

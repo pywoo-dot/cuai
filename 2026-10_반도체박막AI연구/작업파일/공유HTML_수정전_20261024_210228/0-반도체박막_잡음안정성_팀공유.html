@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>박막 두께 추정 AI · 잡음 안정성 연구 기획안</title>
+<style>
+:root{--ink:#172b36;--muted:#536773;--paper:#f5f7f6;--line:#d7e2df;--teal:#006d68;--teal-soft:#e7f3f0;--navy:#173843;--orange:#b95124}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:88px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;line-height:1.8;word-break:keep-all;overflow-wrap:anywhere}
+a{color:var(--teal);text-underline-offset:4px}button,a{touch-action:manipulation}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #e89745;outline-offset:4px}
+.skip{position:absolute;top:-80px;left:20px;background:#fff;padding:8px 16px;z-index:10}.skip:focus{top:8px}
+.top{position:sticky;top:0;background:#fffffff2;border-bottom:1px solid var(--line);z-index:4}
+.top-inner{max-width:1100px;margin:auto;padding:13px 28px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.brand{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--navy)}
+nav{display:flex;gap:20px;font-size:13px}nav a{text-decoration:none;color:var(--muted)}
+.print{background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 12px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap}
+main{max-width:1100px;margin:auto;padding:44px 28px 68px}.eyebrow{font-size:12px;letter-spacing:.14em;font-weight:800;color:var(--teal);margin:0 0 16px}
+.hero{background:var(--navy);color:white;border-radius:18px;padding:46px 44px;position:relative;overflow:hidden}
+.hero .eyebrow{color:#99d9c9}.meta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:#c3d8de;margin-bottom:22px}
+.meta span{border:1px solid #52717a;border-radius:99px;padding:3px 10px}
+h1{font-size:clamp(27px,3.4vw,41px);line-height:1.42;letter-spacing:-.045em;max-width:850px;margin:0 0 23px}
+.hero .lead{font-size:17px;max-width:760px;margin:0;color:#e0eeeb}
+.hero .question{margin:26px 0 0;padding-top:22px;border-top:1px solid #52717a;font-weight:700;font-size:18px;max-width:810px}
+.numbers{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin:22px 0 38px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.number{background:#fff;padding:18px 22px}.number b{font-size:27px;display:block;line-height:1.4;color:var(--teal);letter-spacing:-.035em}.number span{font-size:12px;color:var(--muted)}
+section{margin-top:42px}.section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}.seq{color:var(--teal);font-size:13px;font-weight:800;letter-spacing:.05em}
+h2{font-size:24px;letter-spacing:-.035em;line-height:1.5;margin:0}h3{font-size:16px;margin:0 0 10px;line-height:1.6}p{margin:0 0 13px}.intro{color:var(--muted);max-width:890px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:25px}
+.card p:last-child{margin-bottom:0}.small{font-size:13px;color:var(--muted)}.tag{font-size:11px;font-weight:700;color:var(--teal);letter-spacing:.04em;display:block;margin-bottom:10px}
+.callout{border-left:4px solid var(--teal);background:var(--teal-soft);padding:17px 21px;border-radius:0 9px 9px 0;margin-top:18px;font-size:14px}
+.callout strong{color:var(--teal)}.callout p{margin:0}.note{color:var(--muted);font-size:13px;margin-top:12px}
+.stack{max-width:300px;margin:18px auto 8px;display:grid;gap:5px}.layer{padding:9px 15px;text-align:center;border-radius:5px;font-size:13px;font-weight:700}.nitride{background:#d8eeea;color:#14504b}.oxide{background:#e7edf4;color:#30445c}.substrate{background:#254450;color:#fff;padding:18px 15px}
+.flow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:20px}.flow-item{border:1px solid var(--line);border-radius:9px;padding:18px;background:white;position:relative}.flow-item:not(:last-child):after{content:"→";position:absolute;right:-13px;top:33%;font-size:17px;color:var(--teal);background:var(--paper);z-index:1}.flow-item b{display:block;font-size:14px;margin-bottom:6px}.flow-item span{font-size:13px;color:var(--muted)}
+.table-wrap{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:11px}
+table{width:100%;border-collapse:collapse;font-size:14px}caption{text-align:left;padding:15px 18px;font-weight:700;background:#fff}
+th{text-align:left;background:#edf3f1;font-size:12px;color:#36534f;font-weight:700;white-space:nowrap}th,td{padding:13px 18px;border-bottom:1px solid var(--line);vertical-align:top}tbody tr:last-child td{border-bottom:0}
+.code{font-family:Consolas,monospace;font-size:13px;background:#edf3f1;border-radius:4px;padding:2px 6px}
+.split{display:flex;border-radius:8px;overflow:hidden;margin:18px 0 12px;min-height:47px;font-size:13px;font-weight:700}
+.split .train{width:80%;background:var(--teal);color:#fff;padding:12px 16px}.split .val{width:10%;background:#a6d5ca;color:#173f38;display:flex;align-items:center;justify-content:center}.split .hold{width:10%;background:#dce9e5;color:#173f38;display:flex;align-items:center;justify-content:center}
+.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.steps{counter-reset:steps;list-style:none;padding:0;margin:0;display:grid;gap:12px}.steps li{counter-increment:steps;display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid var(--line);padding:18px 20px;border-radius:9px}.steps li:before{content:counter(steps,decimal-leading-zero);font-size:13px;font-weight:800;color:var(--teal);padding-top:2px}.steps p{margin:0;font-size:14px}
+.formula{margin:17px 0;padding:18px 20px;background:#173843;color:#eef9f6;border-radius:9px;font-family:Consolas,"Malgun Gothic",monospace;font-size:14px;overflow-x:auto}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.metric{background:#fff;border:1px solid var(--line);padding:23px;border-radius:11px}.metric .label{font-size:12px;color:var(--teal);font-weight:700}.metric h3{font-size:18px;margin-top:9px}.metric p{font-size:14px;margin-bottom:0}
+.optional{border:1px dashed #94b5aa;background:#f1f7f3;border-radius:11px;padding:24px;margin-top:19px}
+.timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.week{border-top:3px solid var(--teal);background:#fff;border-radius:0 0 10px 10px;padding:22px;border-left:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.week .when{font-size:12px;font-weight:800;color:var(--teal);letter-spacing:.1em}.week h3{margin-top:8px}.week p{font-size:14px}.week .output{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin:13px 0 0}
+ul{padding-left:20px}li{margin-bottom:7px}.checklist{margin:0;padding-left:21px;font-size:14px}
+details{border:1px solid var(--line);background:#fff;border-radius:10px;margin-top:14px;padding:16px 21px}summary{font-size:14px;font-weight:700;cursor:pointer}details .details-body{font-size:13px;color:var(--muted);padding-top:15px}
+.pitch{background:var(--navy);color:#edf7f4;border-radius:12px;padding:27px 30px;margin-top:28px}.pitch h3{color:#a3dacc;font-size:12px;letter-spacing:.06em}.pitch p{font-size:15px;margin:0;line-height:1.95}
+.sources{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.source{display:block;background:#fff;border:1px solid var(--line);padding:17px;border-radius:9px;text-decoration:none;font-size:13px;font-weight:700}.source span{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:5px}
+footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:35px;padding-top:18px;display:flex;justify-content:space-between;gap:14px}
+@media(max-width:720px){.top-inner{padding:11px 18px}.brand{font-size:11px}nav{gap:12px;font-size:12px}nav a:nth-child(n+3){display:none}main{padding:24px 16px 42px}.hero{padding:28px 24px;border-radius:12px}.hero .lead{font-size:15px}.hero .question{font-size:16px}.numbers{grid-template-columns:repeat(2,1fr);margin-bottom:28px}.number{padding:14px 18px}.number b{font-size:24px}.grid2,.metrics,.timeline,.sources{grid-template-columns:1fr}.flow{grid-template-columns:1fr;gap:10px}.flow-item:not(:last-child):after{display:none}.card{padding:21px}.section-head{gap:10px}h2{font-size:21px}section{margin-top:32px}th,td{padding:12px;font-size:12px}.split .train{padding:12px}.legend{gap:10px}.pitch{padding:23px}footer{display:block}.print{font-size:11px;padding:5px 8px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{@page{size:A4;margin:16mm}body{background:#fff;font-size:10pt;color:#152c36}.top,.skip,.print{display:none}main{padding:0;max-width:none}.hero{background:#fff;color:var(--ink);padding:0;border-radius:0;overflow:visible}.hero .eyebrow{color:var(--teal)}.hero .lead,.hero .question,.meta{color:var(--ink)}.hero .question{font-size:12pt;margin-top:12px;padding-top:12px}.meta span{border-color:var(--line)}h1{font-size:23pt;max-width:none}.numbers{margin:18px 0}.number b{font-size:18pt}.card,.metric,.week,.optional,.pitch,details,.source{break-inside:avoid;box-shadow:none}.pitch{background:#fff;color:var(--ink);border:1px solid var(--line)}.pitch h3{color:var(--teal)}section{margin-top:24px}.section-head{break-after:avoid}h2{font-size:16pt}h3{font-size:12pt}.formula{background:#fff;color:var(--ink);border:1px solid var(--line)}.table-wrap{overflow:visible}thead{display:table-header-group}tr{break-inside:avoid}a{color:var(--ink)}.sources{grid-template-columns:1fr 1fr 1fr}footer{margin-top:20px}.flow-item:after{display:none}.callout{background:#f4f7f5}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">본문으로 이동</a>
+<header class="top"><div class="top-inner"><span class="brand">AI 학회 · 반도체 박막 연구</span><nav aria-label="문서 목차"><a href="#overview">개요</a><a href="#experiment">실험</a><a href="#metrics">평가</a><a href="#team">일정·역할</a></nav><button class="print" type="button" onclick="window.print()">인쇄 / PDF 저장</button></div></header>
+<main id="content">
+<div class="hero">
+<p class="eyebrow">RESEARCH PROPOSAL</p>
+<div class="meta"><span>팀 공유용 기획안</span><span>2026.10.24</span><span>실험 전 · 조건 설정안</span></div>
+<h1>반사율로 추정한 박막 두께,<br>잡음에도 안정적일까?</h1>
+<p class="lead">반사율 스펙트럼 기반 다층 박막 두께 추정 모델의 잡음 안정성 평가</p>
+<p class="question">같은 두께의 박막인데 반사율이 조금 흔들리면,<br>AI의 두께 예측은 얼마나 달라지는가?</p>
+</div>
+<div class="numbers" aria-label="연구 핵심 수치">
+<div class="number"><b>810,000</b><span>정답이 있는 학습 표본</span></div>
+<div class="number"><b>226 → 4</b><span>반사율 입력 → 층별 두께 출력</span></div>
+<div class="number"><b>5수준</b><span>원본 기준 + 추가 잡음 조건</span></div>
+<div class="number"><b>3주</b><span>기본 평가·해석·발표 일정 제안</span></div>
+</div>
+<section id="overview">
+<div class="section-head"><span class="seq">01</span><h2>무엇을 연구하나요?</h2></div>
+<p class="intro">박막 두께가 달라지면 빛의 간섭이 달라져 파장별 반사율 패턴도 달라집니다. 이 관계를 역으로 이용해 네 층의 두께를 추정하고, 입력 오차가 예측에 미치는 영향을 평가합니다.</p>
+<div class="grid2">
+<div class="card"><span class="tag">반도체·재료 관점</span><h3>같은 물질도 쌓인 위치가 다릅니다</h3>
+<div class="stack" role="img" aria-label="위에서부터 layer 1 질화규소, layer 2 이산화규소, layer 3 질화규소, layer 4 이산화규소, 규소 기판. 개념도이며 두께 비례 아님.">
+<div class="layer nitride">Layer 1 · 질화규소</div><div class="layer oxide">Layer 2 · 이산화규소</div><div class="layer nitride">Layer 3 · 질화규소</div><div class="layer oxide">Layer 4 · 이산화규소</div><div class="layer substrate">규소 기판</div></div>
+<p class="small" style="text-align:center">구조 개념도 · 실제 두께 비례 아님</p>
+<p class="small">층별로 예측 오차가 얼마나 다른지 비교하고, 재료와 적층 위치·광학 간섭을 바탕으로 해석합니다.</p></div>
+<div class="card"><span class="tag">AI 관점</span><h3>정확도와 예측의 흔들림을 함께 봅니다</h3><p><strong>RQ1.</strong> 추가 잡음이 커지면 두께 오차와 예측 변화량은 얼마나 증가할까요?</p><p><strong>RQ2.</strong> 네 층 중 어느 층의 예측이 잡음에 더 민감할까요?</p><p><strong>선택 확장.</strong> 학습할 때 잡음을 추가하면 평가 시 성능 저하를 줄일 수 있을까요?</p><p class="small">어느 층이 더 취약한지, 증강 학습이 개선하는지는 실험으로 확인할 가설입니다.</p></div>
+</div>
+<div class="flow" aria-label="연구 흐름"><div class="flow-item"><b>반사율 스펙트럼</b><span>동일한 평가 표본에 추가 잡음</span></div><div class="flow-item"><b>MLP 신경망</b><span>모델 구조 한 종류로 고정</span></div><div class="flow-item"><b>4개 층의 예측 두께</b><span>정답 오차·원본 대비 변화량 비교</span></div></div>
+<div class="callout"><p><strong>원본에도 잡음이 있습니다.</strong> 자료는 광학 계산값에 약 1% 잡음을 추가한 합성 데이터입니다. 이번 연구는 여기에 추가 오차를 주는 스트레스 시험이며, 실제 장비 성능을 직접 검증하는 실험은 아닙니다.</p></div>
+</section>
+<section id="data">
+<div class="section-head"><span class="seq">02</span><h2>어떤 데이터를 사용하나요?</h2></div>
+<div class="table-wrap"><table><caption>원본 파일과 연구에서의 용도</caption><thead><tr><th scope="col">파일</th><th scope="col">구성</th><th scope="col">연구 용도</th></tr></thead><tbody>
+<tr><td><strong>train.csv</strong></td><td>810,000행 × 230열</td><td>반사율 226개 + 두께 정답 4개. 학습·검증·최종 평가에 분할 사용.</td></tr>
+<tr><td>test.csv</td><td>10,000행 × 227열</td><td>정답이 없어 본 연구의 정량 평가에 사용하지 않음. id는 식별번호.</td></tr>
+<tr><td>sample_submission.csv</td><td>10,000행 × 5열</td><td>제출 양식. 0으로 채워진 값은 정답이 아님.</td></tr>
+</tbody></table></div>
+<div class="card" style="margin-top:18px"><h3>원본 학습 자료를 무작위로 80 : 10 : 10 분할</h3><div class="split" aria-label="학습 80%, 검증 10%, 최종 평가 10%"><div class="train">학습 80%</div><div class="val">10%</div><div class="hold">10%</div></div><div class="legend"><span>학습 648,000개</span><span>검증 81,000개</span><span>최종 평가 81,000개</span></div><p class="note">원본은 두께 조합 순서로 정렬돼 있으므로 마지막 일부를 그대로 자르지 않습니다. 분할 난수를 고정하고 인덱스를 저장합니다. 설정은 검증 자료로 선택하고, 최종 평가 자료는 설정 고정 후 사용합니다.</p></div>
+</section>
+<section id="experiment">
+<div class="section-head"><span class="seq">03</span><h2>실험은 어떻게 진행하나요?</h2></div>
+<ol class="steps">
+<li><p><strong>기준 모델 학습</strong><br>입력 226개 → 은닉층 160개 뉴런 × 3층 → 출력 두께 4개인 MLP를 사용합니다. MAE 손실과 Adam으로 시작하고, 학습 횟수·조기 종료 기준은 예비 실험에서 정한 뒤 고정합니다.</p></li>
+<li><p><strong>원본 기준 오차 측정</strong><br>추가 잡음이 없는 원본 평가 입력에서 전체·층별 두께 오차를 측정합니다. 이 값이 이후 비교의 기준입니다.</p></li>
+<li><p><strong>반사율에만 추가 잡음 적용</strong><br>같은 평가 표본에 크기가 다른 잡음을 더합니다. 네 층의 두께 정답은 바꾸지 않습니다.</p></li>
+<li><p><strong>반복 평가와 층별 비교</strong><br>추가 잡음 난수 10회, 학습 초기화 난수 3개로 평가합니다. 비교할 모델에는 동일한 평가 표본과 잡음 실현값을 사용합니다.</p></li>
+</ol>
+<div class="formula">x<sub>추가 잡음</sub> = x<sub>원본</sub> + ε &nbsp; / &nbsp; ε ~ N(0, σ²)</div>
+<p class="small">각 채널에 독립적인 평균 0의 정규 잡음을 더하는 단순화된 실험 가정입니다. σ는 <strong>정규화 전 반사율 값의 절대 스케일</strong>에서 정의합니다.</p>
+<div class="table-wrap"><table><caption>추가 잡음 조건 설정안</caption><thead><tr><th scope="col">조건</th><th scope="col">표준편차 σ</th><th scope="col">해석</th><th scope="col">잡음 반복</th></tr></thead><tbody>
+<tr><td><strong>S0</strong></td><td>0</td><td>추가 잡음 없는 원본 기준</td><td>반복 생성 없음</td></tr>
+<tr><td>S1</td><td>0.0025</td><td>약한 추가 잡음</td><td>10회</td></tr>
+<tr><td>S2</td><td>0.005</td><td>중간 추가 잡음</td><td>10회</td></tr>
+<tr><td>S3</td><td>0.01</td><td>큰 추가 잡음</td><td>10회</td></tr>
+<tr><td>S4</td><td>0.02</td><td>높은 스트레스 조건</td><td>10회</td></tr>
+</tbody></table></div>
+<p class="note">σ = 0.01은 반사율 값 기준 표준편차 0.01이며, 각 관측값에 상대적으로 1%를 곱하는 설정이 아닙니다. 공식 데이터의 ‘약 1%’ 잡음과 동일한 분포·정의라는 뜻도 아닙니다.</p>
+<div class="optional"><span class="tag">기본 평가 이후 · 선택 확장</span><h3>잡음 증강 학습으로 개선할 수 있을까요?</h3><p>동일 구조의 모델을 학습할 때도 잡음을 추가해 비교합니다. 첫 후보는 σ = 0.005이며, 조정은 검증 자료에서만 합니다. 원본 학습 모델과 학습예산을 맞추고, <strong>잡음 조건의 개선과 원본 입력 정확도의 손실</strong>을 함께 확인합니다.</p></div>
+</section>
+<section id="metrics">
+<div class="section-head"><span class="seq">04</span><h2>무엇으로 안정성을 판단하나요?</h2></div>
+<div class="metrics">
+<div class="metric"><span class="label">정확도</span><h3>두께를 잘 맞추는가?</h3><p>전체·층별 MAE를 계산합니다. 추가 잡음 조건의 MAE에서 S0의 MAE를 뺀 <strong>오차 증가량</strong>도 제시합니다.</p></div>
+<div class="metric"><span class="label">예측 일관성</span><h3>얼마나 흔들리는가?</h3><p>같은 모델에서 원본과 추가 잡음 입력의 <strong>예측 두께 차이의 절댓값</strong>을 표본·층 전체에 걸쳐 평균합니다.</p></div>
+<div class="metric"><span class="label">큰 오차</span><h3>일부에서 크게 실패하는가?</h3><p>표본마다 네 층의 절대오차를 평균하고, 그 값의 <strong>95백분위</strong>를 비교합니다.</p></div>
+</div>
+<div class="callout"><p><strong>흔들림이 작다고 정확한 모델은 아닙니다.</strong> 항상 같은 두께를 출력하는 모델도 일관성은 높을 수 있습니다. 정확도와 예측 변화량을 반드시 함께 봅니다.</p></div>
+<p class="note">학습 난수별 결과와 평균·표준편차를 함께 제시합니다. 같은 표본에 잡음을 반복한 결과를 독립적인 새 박막 표본 수가 늘어난 것으로 해석하지 않습니다.</p>
+</section>
+<section id="team">
+<div class="section-head"><span class="seq">05</span><h2>팀은 어떻게 나눠 진행하나요?</h2></div>
+<div class="timeline">
+<div class="week"><span class="when">WEEK 01</span><h3>기준 모델 만들기</h3><p>원리 이해, 데이터 분할 고정, 모델 구현과 학습.</p><p class="output">완료 기준: 학습·검증 곡선과 S0 성능</p></div>
+<div class="week"><span class="when">WEEK 02</span><h3>잡음 안정성 평가</h3><p>S0~S4 평가, 반복 실험, 층별 오차와 큰 실패 분석.</p><p class="output">완료 기준: 조건별 수치와 비교 그래프</p></div>
+<div class="week"><span class="when">WEEK 03</span><h3>해석과 발표 정리</h3><p>결과 해석, 재현 확인, 발표 제작. 여유가 있으면 잡음 증강 실험.</p><p class="output">완료 기준: 재현 가능한 결과와 발표 자료</p></div>
+</div>
+<div class="table-wrap" style="margin-top:19px"><table><caption>역할 분담안 · 회의에서 담당자 지정</caption><thead><tr><th scope="col">역할</th><th scope="col">담당 내용</th><th scope="col">담당자</th></tr></thead><tbody>
+<tr><td>전공·데이터 해석</td><td>박막 광학 배경, 데이터 조건 확인, 층별 결과 해석</td><td>미정</td></tr>
+<tr><td>모델 학습</td><td>분할·전처리 고정, MLP 학습, 모델·난수 기록</td><td>미정</td></tr>
+<tr><td>평가·시각화</td><td>잡음 생성, 지표 계산, 그래프와 결과표 정리</td><td>미정</td></tr>
+</tbody></table></div><p class="note">인원에 따라 역할을 겸할 수 있습니다. 3주는 계획용 제안이며, 실제 학습시간에 맞춰 조정합니다.</p>
+</section>
+<section id="discussion">
+<div class="section-head"><span class="seq">06</span><h2>회의에서 정할 사항</h2></div>
+<div class="grid2">
+<div class="card"><span class="tag">팀 합의</span><ul class="checklist"><li>주제와 기본 실험 범위에 동의하는가?</li><li>역할별 담당자와 주차별 확인 날짜는?</li><li>사용할 학습 장비와 공유 저장 위치는?</li><li>추가 잡음 5수준을 설정안대로 시작할 것인가?</li><li>잡음 증강 학습은 기본 평가 후 추가할 것인가?</li></ul></div>
+<div class="card"><span class="tag">완성할 결과물</span><ul class="checklist"><li>4층 구조와 두께 추정 흐름 설명</li><li>잡음 크기 대 전체·층별 MAE 그래프</li><li>예측 변화량과 95백분위 오차 그래프</li><li>난수·분할·학습 조건이 기록된 결과표</li><li>배경 → 방법 → 결과 → 해석 → 한계 발표</li></ul></div>
+</div>
+<details><summary>실험 전에 꼭 지킬 조건과 해석의 한계</summary><div class="details-body"><ul>
+<li>원본의 음수 반사율은 정상 데이터입니다. 기본 실험에서 삭제·절댓값 변환·0으로 자르기를 하지 않습니다. 추가 잡음 적용 후에도 기본 비교에서는 0~1로 자르지 않습니다.</li>
+<li>정규화 통계는 학습 분할에서만 구합니다. 최종 평가 결과를 보고 모델 설정을 다시 조정하지 않습니다.</li>
+<li>학습 두께는 10~300의 10 간격 격자입니다. 이번 분할은 그 범위 안의 성능을 평가합니다.</li>
+<li>반사율만 사용하며 투과율·공정 조건·불량 라벨은 없습니다. 실제 공장 적용이나 허용오차를 입증한 것으로 해석하지 않습니다.</li>
+<li>공식 공지의 채널 표기 0~255와 실제 CSV 0~225가 다릅니다. 채널별 파장 매핑과 두께 단위는 추가 확인합니다. 확인 전 두께 오차에 nm 단위를 붙이지 않습니다.</li>
+<li>본 문서는 기획안입니다. 아직 학습 결과·오차 수치·안정성 개선 결과는 없습니다.</li>
+</ul></div></details>
+<div class="pitch"><h3>공유할 때 사용할 소개 문장</h3><p>이 연구는 반사율 스펙트럼에서 네 개 박막층의 두께를 추정하는 AI 모델이 입력 오차에 얼마나 민감한지 평가한다. 기존 합성 데이터에 크기가 다른 추가 잡음을 넣고, 두께 예측 오차와 동일 박막의 예측 변화량을 측정한다. 층별 민감도와 일부 표본의 큰 오차를 함께 확인하고, 필요하면 잡음 증강 학습으로 안정성을 개선할 수 있는지 비교한다.</p></div>
+</section>
+<section id="sources"><div class="section-head"><span class="seq">07</span><h2>근거 자료</h2></div><div class="sources">
+<a class="source" href="https://dacon.io/competitions/official/235554/data" target="_blank" rel="noopener noreferrer">대회 데이터 설명 ↗<span>재료 구조·입력과 정답</span></a>
+<a class="source" href="https://dacon.io/competitions/official/235554/talkboard/400310" target="_blank" rel="noopener noreferrer">데이터 생성 조건 ↗<span>합성 방식·잡음·광학 조건</span></a>
+<a class="source" href="https://dacon.io/competitions/official/235554/codeshare/461" target="_blank" rel="noopener noreferrer">공식 기준 모델 ↗<span>MLP 구조의 출발점</span></a>
+</div></section>
+<footer><span>AI 학회 팀 연구 · 반도체 박막 잡음 안정성 평가</span><span>기획안 2026.10.24 · 모델 실험 전</span></footer>
+</main>
+</body></html>
